@@ -102,10 +102,23 @@ function Navbar() {
         </div>
 
         {/* --- MOBILE HAMBURGER BUTTON --- */}
-        <button className="mobile-hamburger" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? '✕' : '☰'}
+       {/* --- MOBILE HAMBURGER BUTTON --- */}
+        <button className="mobile-hamburger" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {mobileMenuOpen ? (
+            /* Close "X" Icon */
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            /* Hamburger Menu Icon */
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          )}
         </button>
-      </nav>
 
       {/* --- MOBILE FULLSCREEN MENU --- */}
       {mobileMenuOpen && (
