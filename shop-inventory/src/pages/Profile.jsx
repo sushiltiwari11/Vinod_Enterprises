@@ -1,119 +1,130 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../supabaseClient'; // 🟢 Switched to Supabase
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import toast from 'react-hot-toast';
+import Invoice from '../components/invoice';
 
 function Profile() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('orders');
-  const [realOrders, setRealOrders] = useState([]); 
-  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
 
   useEffect(() => {
-    const fetchUserAndOrders = async () => {
-      // 🟢 Supabase check for logged in user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        fetchMyOrders(session.user.id); 
-      } else {
-        navigate('/login');
-      }
-    };
-    fetchUserAndOrders();
-  }, [navigate]);
+    fetchUserDataAndOrders();
+  }, []);
 
-  const fetchMyOrders = async (userId) => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('user_id', userId)
-        .order('id', { ascending: false });
-        
-      if (!error && data) {
-        setRealOrders(data);
-      }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setIsLoadingOrders(false);
-    }
+  const fetchUserDataAndOrders = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    setUser(session.user);
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (data) setOrders(data);
+    setLoading(false);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    localStorage.removeItem("isAuth");
-    navigate('/login');
+    window.location.href = '/login'; 
   };
 
-  if (!user) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading profile...</div>;
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '50px', fontSize: '1.2rem', color: '#0f172a' }}>Loading your profile...</div>;
+  }
 
-  const menuStyle = (tabName) => ({ padding: '15px 20px', cursor: 'pointer', borderBottom: activeTab === tabName ? '3px solid #008080' : '1px solid #e5e7eb', color: activeTab === tabName ? '#008080' : '#4b5563', fontWeight: activeTab === tabName ? 'bold' : 'normal', backgroundColor: activeTab === tabName ? '#f0fdfa' : 'transparent' });
+  // --- VIEW 1: THE INVOICE VIEW ---
+  if (selectedOrderForInvoice) {
+    return (
+      <div style={{ padding: '20px', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+        <div className="no-print" style={{ maxWidth: '800px', margin: '0 auto 20px auto' }}>
+          <button 
+            onClick={() => setSelectedOrderForInvoice(null)}
+            style={{ backgroundColor: 'transparent', color: '#64748b', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            ← Back to Order History
+          </button>
+        </div>
+        
+        <Invoice order={selectedOrderForInvoice} />
+      </div>
+    );
+  }
 
+  // --- VIEW 2: THE NORMAL PROFILE VIEW ---
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '1000px', margin: '0 auto', minHeight: '70vh', display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+    <div className="no-print" style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: "'Inter', sans-serif" }}>
       
-      <div style={{ flex: '1 1 250px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', height: 'fit-content', overflow: 'hidden' }}>
-        <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#003333', color: 'white' }}>
-          <div style={{ width: '70px', height: '70px', backgroundColor: '#059669', borderRadius: '50%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem' }}>👤</div>
-          <p style={{ margin: '10px 0 0 0', fontSize: '0.85rem', color: '#d1d5db' }}>{user.email}</p>
+      {/* Profile Header */}
+      <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
+        <div>
+          <h1 style={{ margin: '0 0 5px 0', fontSize: '2rem', color: '#0f172a' }}>My Profile 👤</h1>
+          <p style={{ margin: 0, color: '#64748b', fontSize: '1rem' }}>{user?.email}</p>
         </div>
-        
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={menuStyle('orders')} onClick={() => setActiveTab('orders')}>📦 My Orders</div>
-          <div style={menuStyle('settings')} onClick={() => setActiveTab('settings')}>⚙️ Account Settings</div>
-          
-          {user.email === 'vinodenterprisesmagic@gmail.com' && (
-            <div style={{ padding: '15px 20px', cursor: 'pointer', color: '#008080', fontWeight: 'bold', borderTop: '1px solid #e5e7eb', backgroundColor: '#f0fdfa' }} onClick={() => navigate('/admin')}>
-              🛠️ Admin Panel
-            </div>
-          )}
-
-          <div style={{ padding: '15px 20px', cursor: 'pointer', color: '#dc2626', fontWeight: 'bold', borderTop: '1px solid #e5e7eb' }} onClick={handleLogout}>🚪 Sign Out</div>
-        </div>
+        <button onClick={handleLogout} style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Logout
+        </button>
       </div>
 
-      <div style={{ flex: '1 1 500px', backgroundColor: 'white', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-        
-        {activeTab === 'orders' && (
-          <div>
-            <h2 style={{ color: '#008080', borderBottom: '2px solid #059669', paddingBottom: '10px', marginTop: 0 }}>Order History</h2>
-            
-            {isLoadingOrders ? (
-              <p>Loading your orders...</p>
-            ) : realOrders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                <p style={{ fontSize: '1.1rem', color: '#666' }}>You haven't placed any orders yet!</p>
-                <button onClick={() => navigate('/products')} style={{ marginTop: '10px', padding: '10px 20px', backgroundColor: '#008080', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Start Shopping</button>
+      {/* Order History Section */}
+      <h2 style={{ fontSize: '1.5rem', color: '#0f172a', marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>
+        Order History 📦
+      </h2>
+
+      {orders.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <span style={{ fontSize: '3rem' }}>🛒</span>
+          <p style={{ color: '#64748b', fontSize: '1.1rem', marginTop: '10px' }}>You haven't placed any orders yet.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          {orders.map(order => (
+            <div key={order.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+              
+              <div>
+                <p style={{ margin: '0 0 5px 0', fontWeight: 'bold', color: '#0f172a', fontSize: '1.1rem' }}>
+                    Order ID: {order.order_id || `#${order.id}`}
+                  </p>
+                <p style={{ margin: '0 0 5px 0', color: '#64748b', fontSize: '0.9rem' }}>
+                  {new Date(order.created_at).toLocaleDateString()} • {order.items.length} items
+                </p>
+                <span style={{ 
+                  display: 'inline-block', padding: '4px 10px', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 'bold',
+                  backgroundColor: order.status === 'Delivered' ? '#dcfce7' : '#fef08a',
+                  color: order.status === 'Delivered' ? '#16a34a' : '#a16207'
+                }}>
+                  {order.status}
+                </span>
               </div>
-            ) : (
-              realOrders.map(order => (
-                <div key={order.id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '20px', marginBottom: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #f3f4f6', paddingBottom: '10px', marginBottom: '10px' }}>
-                    <span style={{ fontWeight: 'bold', color: '#333' }}>Order ID: #{order.id}</span>
-                    <span style={{ color: '#059669', backgroundColor: '#d1fae5', padding: '2px 8px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>{order.status}</span>
-                  </div>
-                  <p style={{ margin: '5px 0', color: '#4b5563' }}><strong>Date:</strong> {order.order_date}</p>
-                  <p style={{ margin: '5px 0', color: '#4b5563' }}><strong>Items:</strong> {order.items?.map(i => i.name).join(', ')}</p>
-                  <p style={{ margin: '10px 0 0 0', color: '#008080', fontWeight: 'bold', fontSize: '1.2rem' }}>Total: ₹{order.total_amount}</p>
-                </div>
-              ))
-            )}
-          </div>
-        )}
 
-        {activeTab === 'settings' && (
-          <div>
-            <h2 style={{ color: '#008080', borderBottom: '2px solid #059669', paddingBottom: '10px', marginTop: 0 }}>Account Settings</h2>
-            <div style={{ padding: '15px', backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px' }}>
-              <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>User ID:</strong> {user.id}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <span style={{ fontSize: '1.3rem', fontWeight: '900', color: '#0f172a' }}>₹{order.total_amount}</span>
+                
+                {/* SMART INVOICE LOGIC: Only show button if status is Delivered */}
+                {order.status === 'Delivered' ? (
+                  <button 
+                    onClick={() => setSelectedOrderForInvoice(order)}
+                    style={{ backgroundColor: '#0f172a', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+                  >
+                    📄 Invoice
+                  </button>
+                ) : (
+                  <span style={{ fontSize: '0.85rem', color: '#64748b', backgroundColor: '#f1f5f9', padding: '8px 12px', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+                    ⏳ Invoice generated on delivery
+                  </span>
+                )}
+              </div>
+
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      )}
 
-      </div>
     </div>
   );
 }

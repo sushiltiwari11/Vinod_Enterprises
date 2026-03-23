@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -24,7 +25,7 @@ function Login() {
           password: password,
         });
         if (error) throw error;
-        alert("Account created successfully! You can now log in.");
+        toast.success("Account created successfully! You can now log in.");
         setIsSignUp(false); // Switch back to login mode
         setPassword(''); // Clear the password field for safety
         
@@ -40,7 +41,7 @@ function Login() {
        navigate("/");
       }
     } catch (error) {
-      alert((isSignUp ? "Sign Up Error: " : "Login Error: ") + error.message);
+      toast.error((isSignUp ? "Sign Up Error: " : "Login Error: ") + error.message);
     } finally {
       setLoading(false);
     }

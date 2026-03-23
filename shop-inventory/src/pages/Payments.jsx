@@ -1,120 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 function Payments() {
-  const [user, setUser] = useState(null);
-  const [savedMethods, setSavedMethods] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const navigate = useNavigate();
-
-  const [formData, setFormData] = useState({ type: 'UPI', details: '' });
-
-  const fetchPayments = async (userId) => {
-    const { data } = await supabase.from('saved_payments').select('*').eq('user_id', userId).order('id', { ascending: false });
-    if (data) setSavedMethods(data);
-  };
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [upiId, setUpiId] = useState('');
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        fetchPayments(session.user.id);
-      } else {
-        navigate('/login');
-      }
-    };
-    checkUser();
-  }, [navigate]);
+    fetchPayments();
+  }, []);
 
-  const handleSavePayment = async (e) => {
+  const fetchPayments = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await supabase.from('saved_payments').select('*').eq('user_id', session.user.id);
+    if (data) setPayments(data);
+    setLoading(false);
+  };
+
+  const handleSaveUPI = async (e) => {
     e.preventDefault();
-    try {
-      const { error } = await supabase.from('saved_payments').insert([{ ...formData, user_id: user.id }]);
-      if (error) throw error;
-      
-      alert(`${formData.type} saved successfully!`);
-      setShowForm(false);
-      setFormData({ type: 'UPI', details: '' });
-      fetchPayments(user.id);
-    } catch (error) {
-      alert("Error saving: " + error.message);
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Updated to match your 'type' and 'details' columns
+    const { error } = await supabase.from('saved_payments').insert([
+      { user_id: session.user.id, type: 'UPI', details: upiId }
+    ]);
+    
+    if (error) {
+      toast.error("Failed to save UPI ID.");
+    } else {
+      toast.success("UPI ID saved successfully!");
+      setUpiId('');
+      fetchPayments();
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Delete this payment method?")) {
-      await supabase.from('saved_payments').delete().eq('id', id);
-      fetchPayments(user.id);
-    }
+    await supabase.from('saved_payments').delete().eq('id', id);
+    toast.success("Payment method removed.");
+    fetchPayments();
   };
 
-  const inputStyle = { width: '100%', padding: '12px', marginBottom: '15px', border: '1px solid #cbd5e1', borderRadius: '6px' };
-
-  if (!user) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}>Loading...</div>;
 
   return (
-    <div style={{ padding: '40px 20px', maxWidth: '900px', margin: '0 auto', minHeight: '70vh', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ maxWidth: '800px', margin: '40px auto', padding: '20px', fontFamily: "'Inter', sans-serif" }}>
+      <h1 style={{ fontSize: '2rem', color: '#0f172a', marginBottom: '20px' }}>Payment Methods 💳</h1>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0f766e', paddingBottom: '15px', marginBottom: '30px' }}>
-        <h1 style={{ color: '#0f172a', margin: 0 }}>💳 Payment Methods</h1>
-        <button onClick={() => setShowForm(!showForm)} style={{ backgroundColor: '#0f766e', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
-          {showForm ? "Cancel" : "+ Add UPI / Wallet"}
-        </button>
+      <div style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', padding: '15px', borderRadius: '8px', marginBottom: '30px', fontSize: '0.9rem' }}>
+        <strong>Security Notice:</strong> For your protection, Vinod Enterprises does not store credit card numbers on our servers. All card transactions are processed securely via our encrypted payment gateway during checkout. You may save your preferred UPI IDs below for faster checkout.
       </div>
 
-      {/* --- ADD PAYMENT FORM --- */}
-      {showForm && (
-        <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '30px', borderTop: '4px solid #0f766e' }}>
-          <h2 style={{ marginTop: 0, color: '#0f172a' }}>Save a New Method</h2>
-          <form onSubmit={handleSavePayment}>
-            <select required value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} style={inputStyle}>
-              <option value="UPI">UPI ID (GPay, PhonePe, Paytm)</option>
-              <option value="Wallet">Mobile Wallet Number</option>
-            </select>
-            <input 
-              type="text" 
-              placeholder={formData.type === 'UPI' ? "E.g. name@okhdfcbank" : "10-digit Mobile Number"} 
-              required 
-              value={formData.details} 
-              onChange={(e) => setFormData({...formData, details: e.target.value})} 
-              style={inputStyle} 
-            />
-            <button type="submit" style={{ width: '100%', padding: '12px', backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Save {formData.type}</button>
-          </form>
+      <h3 style={{ color: '#0f172a' }}>Saved UPI IDs</h3>
+      {payments.filter(p => p.type === 'UPI').map(payment => (
+        <div key={payment.id} style={{ border: '1px solid #e2e8f0', padding: '15px 20px', borderRadius: '12px', marginBottom: '15px', backgroundColor: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <span style={{ fontSize: '1.5rem' }}>📱</span>
+            <span style={{ fontWeight: 'bold', color: '#334155' }}>{payment.details}</span>
+          </div>
+          <button onClick={() => handleDelete(payment.id)} style={{ background: 'transparent', color: '#dc2626', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Remove</button>
         </div>
-      )}
+      ))}
 
-      {/* --- SAVED METHODS (UPI & WALLET) --- */}
-      <h3 style={{ color: '#475569', marginBottom: '15px' }}>Saved UPI & Wallets</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-        {savedMethods.length === 0 ? (
-          <p style={{ color: '#64748b', fontStyle: 'italic' }}>No UPI IDs or Wallets saved.</p>
-        ) : (
-          savedMethods.map(method => (
-            <div key={method.id} style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '1.5rem', marginRight: '10px' }}>{method.type === 'UPI' ? '📱' : '👛'}</span>
-                <strong style={{ color: '#0f172a' }}>{method.type}</strong>
-                <div style={{ color: '#475569', fontSize: '0.9rem', marginTop: '5px' }}>{method.details}</div>
-              </div>
-              <button onClick={() => handleDelete(method.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>Remove</button>
-            </div>
-          ))
-        )}
-      </div>
+      {payments.length === 0 && <p style={{ color: '#64748b' }}>No saved payment methods.</p>}
 
-      {/* --- SAVED CARDS (RAZORPAY PREP) --- */}
-      <h3 style={{ color: '#475569', marginBottom: '15px', borderTop: '1px solid #e2e8f0', paddingTop: '30px' }}>Saved Cards (Credit/Debit)</h3>
-      <div style={{ backgroundColor: '#f8fafc', padding: '30px', borderRadius: '8px', border: '1px dashed #cbd5e1', textAlign: 'center' }}>
-        <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>🔒</span>
-        <h4 style={{ margin: '0 0 5px 0', color: '#0f172a' }}>Secure Card Saving Coming Soon</h4>
-        <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-          To ensure maximum PCI-DSS compliance and security, card saving will be activated alongside our Razorpay integration. Your financial data safety is our top priority.
-        </p>
-      </div>
-
+      <form onSubmit={handleSaveUPI} style={{ marginTop: '30px', display: 'flex', gap: '10px' }}>
+        <input 
+          required 
+          type="text" 
+          placeholder="Enter UPI ID (e.g., name@bank)" 
+          value={upiId} 
+          onChange={e => setUpiId(e.target.value)} 
+          style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+        />
+        <button type="submit" style={{ background: '#ea580c', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+          Save UPI
+        </button>
+      </form>
     </div>
   );
 }

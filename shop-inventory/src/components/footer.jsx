@@ -67,13 +67,13 @@ function Footer() {
         <div>
           <h3 style={headerStyle}>Contact Us</h3>
           <p style={{ color: '#d1d5db', marginBottom: '12px', fontSize: '0.95rem' }}>
-            📍 123 Industrial Estate, Business District
+          📍 Plot no.1 A/1, D Block, Shyam Vihar, Phase-1, Najafgarh, New Delhi-110043
           </p>
           <p style={{ color: '#d1d5db', marginBottom: '12px', fontSize: '0.95rem' }}>
-            📞 +91 98765 43210
+            📞 +91 9999642530, 9818962487
           </p>
           <p style={{ color: '#d1d5db', marginBottom: '12px', fontSize: '0.95rem' }}>
-            ✉️ support@vinodenterprises.com
+            ✉️ vinodenterprisesmagic@gmail.com
           </p>
         </div>
 

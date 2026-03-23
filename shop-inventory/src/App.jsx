@@ -1,12 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 
-// THE FIX: This prevents the white screen!
 import { CartProvider } from './context/CartContext'; 
-
-import About from './pages/About';
-import Addresses from './pages/Addresses';
-import Payments from './pages/Payments';
+import ProtectedRoute from './components/ProtectedRoute'; // <-- THE NEW BOUNCER
 
 import Navbar from './components/Navbar';
 import Footer from './components/footer';
@@ -18,6 +15,9 @@ import Admin from './pages/admin';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Profile from './pages/Profile';
+import About from './pages/About';
+import Addresses from './pages/Addresses';
+import Payments from './pages/Payments';
 
 const PlaceholderPage = ({ title, icon }) => (
   <div style={{ padding: '80px 20px', textAlign: 'center', minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -33,26 +33,28 @@ function App() {
       <BrowserRouter>
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
           
+          <Toaster position="bottom-right" reverseOrder={false} />
           <Navbar /> 
           
           <div style={{ flex: 1 }}>
             <Routes>
+              {/* --- PUBLIC ROUTES (Anyone can visit) --- */}
               <Route path="/" element={<Home />} /> 
               <Route path="/products" element={<Products />} /> 
               <Route path="/login" element={<Login />} />
-              <Route path="/admin" element={<Admin />} />
               <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/orders" element={<Profile />} /> 
               <Route path="/about" element={<About />} />
-              <Route path="/addresses" element={<Addresses />} />
-              <Route path="/payments" element={<Payments />} />
-              
-              <Route path="/about" element={<PlaceholderPage title="About Vinod Enterprises" icon="🏢" />} />
               <Route path="/collection" element={<PlaceholderPage title="The Magic Collection" icon="✨" />} />
-              <Route path="/addresses" element={<PlaceholderPage title="Saved Addresses" icon="📍" />} />
-              <Route path="/payments" element={<PlaceholderPage title="Payment Methods" icon="💳" />} />
+
+              {/* --- PRIVATE USER ROUTES (Must be logged in to see these) --- */}
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><Profile /></ProtectedRoute>} /> 
+              <Route path="/addresses" element={<ProtectedRoute><Addresses /></ProtectedRoute>} />
+              <Route path="/payments" element={<ProtectedRoute><Payments /></ProtectedRoute>} />
+              
+              {/* --- STRICT ADMIN ROUTE (Only YOU can see this) --- */}
+              <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><Admin /></ProtectedRoute>} />
             </Routes>
           </div>
 
