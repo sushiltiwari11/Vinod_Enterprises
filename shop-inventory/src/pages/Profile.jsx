@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import toast from 'react-hot-toast';
-import Invoice from '../components/invoice';
+import Invoice from '../components/Invoice';
 
 function Profile() {
   const [user, setUser] = useState(null);
